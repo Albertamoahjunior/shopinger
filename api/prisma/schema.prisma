@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Core user authentication
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String? // Make password optional for OAuth users
+  googleId      String?   @unique // For Google OAuth
+  provider      String    @default("local") // 'local' or 'google'
+  is_active     Boolean   @default(true)
+  email_verified Boolean  @default(false)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  
+  // Relations
+  profile       Profile?
+  sessions      Session[]
+  deliveries    Delivery[] @relation("CustomerDeliveries")
+  deliveries_deliverer Delivery[] @relation("DelivererDeliveries")
+  receipts_customer Receipt[] @relation("CustomerReceipts")
+  receipts_teller   Receipt[] @relation("TellerReceipts")
+  mart_items    Mart[]
+  delivery_timetables DeliveryTimetable[]
+  
+  @@index([email])
+  @@map("users")
+}
+
+// Extended user information
+model Profile {
+  id           Int       @id @default(autoincrement())
+  user_id      Int       @unique
+  first_name   String
+  last_name    String
+  phone_number String?
+  role         UserRole
+  date_of_birth DateTime? @db.Date
+  hire_date    DateTime? @db.Date  // For employees
+  id_number    String?   @unique   // For employees
+  profile_data Json?     // Role-specific data
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  
+  // Relations
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  addresses    Address[]
+  
+  @@index([user_id])
+  @@index([role])
+  @@map("profiles")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  TELLER
+  DELIVERER
+  SUPPLIER_CONTACT
+}
+
+// Updated Address model
+model Address {
+  id            Int     @id @default(autoincrement())
+  profile_id    Int
+  address_line  String?
+  country       String?
+  state         String?
+  city          String?
+  postal_code   String?
+  is_primary    Boolean @default(false)
+  
+  profile       Profile @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  
+  @@index([profile_id])
+  @@map("addresses")
+}
+
+/// Represents the store's inventory.
+model Inventory {
+  product_id     String         @id
+  product_name   String
+  product_qty    Int
+  supplier_id    Int
+  product_price  Decimal        @db.Decimal(10, 2)
+  prod_desc      String?
+  prod_spec      String?
+  category       String?
+  images         Images[]
+  item_image_map ItemImageMap[]
+  mart_items     Mart[]
+  sold_items     Sold[]
+  supplier       Supplier       @relation(fields: [supplier_id], references: [supplier_id], onDelete: Restrict)
+
+  @@index([supplier_id])
+  @@index([category])
+  @@index([product_name])
+}
+
+/// Maps items to their images.
+model ItemImageMap {
+  item_id    String
+  item_image String
+  product    Inventory @relation(fields: [item_id], references: [product_id], onDelete: Cascade)
+
+  @@id([item_id, item_image])
+  @@index([item_id])
+}
+
+/// Represents items in a customer's shopping cart.
+model Mart {
+  customer_user_id Int
+  product_id  String
+  type        String
+  qty         Int?      @default(1)
+  created_at  DateTime? @default(now())
+  product     Inventory @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  user        User @relation(fields: [customer_user_id], references: [id], onDelete: Cascade)
+
+  @@id([customer_user_id, product_id, type])
+  @@index([customer_user_id])
+  @@index([product_id])
+}
+
+/// Represents a sales receipt.
+model Receipt {
+  receipt_id  Int        @id @default(autoincrement())
+  customer_user_id Int
+  teller_user_id   Int
+  total_amount Decimal?  @db.Decimal(10, 2)
+  log_date    DateTime?  @default(now()) @db.Date
+  log_time    DateTime?  @default(now()) @db.Timestamp(0)
+  deliveries  Delivery[]
+  customer    User @relation("CustomerReceipts", fields: [customer_user_id], references: [id], onDelete: Cascade)
+  teller      User @relation("TellerReceipts", fields: [teller_user_id], references: [id], onDelete: Restrict)
+  sold_items  Sold[]
+
+  @@index([customer_user_id])
+  @@index([teller_user_id])
+  @@index([log_date])
+  @@map("receipts")
+}
+
+/// Manages user sessions.
+model Session {
+  sid    String    @id
+  sess   Json
+  expire DateTime? @db.Timestamp(6)
+  user_email String
+  user   User      @relation(fields: [user_email], references: [email])
+
+  @@index([expire])
+  @@index([user_email])
+}
+
+/// Represents products that have been sold.
+model Sold {
+  sold_id      Int       @id @default(autoincrement())
+  product_id   String
+  product_qty  Int
+  unit_price   Decimal   @db.Decimal(10, 2)
+  mode         String
+  transmission String
+  receipt_id   Int?
+  log_date     DateTime? @default(now()) @db.Date
+  log_time     DateTime? @default(now()) @db.Timestamp(0)
+  product      Inventory @relation(fields: [product_id], references: [product_id], onDelete: Restrict)
+  receipt      Receipt?  @relation(fields: [receipt_id], references: [receipt_id], onDelete: SetNull)
+
+  @@index([product_id])
+  @@index([receipt_id])
+  @@index([log_date])
+}
+
+/// Represents product suppliers.
+model Supplier {
+  supplier_id      Int                @id @default(autoincrement())
+  supplier_name    String             @unique
+  contact          String?
+  email            String?            @unique
+  address          String?
+  created_at       DateTime?          @default(now())
+  inventory_items  Inventory[]
+  supplier_products SupplierProduct[]
+
+  @@index([supplier_name])
+}
+
+/// Junction table for supplier-product relationships
+model SupplierProduct {
+  item_id      String
+  supplier_id  Int
+  cost_price   Decimal?   @db.Decimal(10, 2)
+  supplier     Supplier   @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+
+  @@id([item_id, supplier_id])
+  @@index([supplier_id])
+  @@index([item_id])
+}
+
+/// Represents delivery information.
+model Delivery {
+  delivery_id     Int       @id @default(autoincrement())
+  deliverer_user_id    Int
+  delivery_report String
+  customer_user_id     Int
+  delivery_time   DateTime? @db.Date
+  customer_report String?
+  receipt_id      Int?
+  customer        User @relation("CustomerDeliveries", fields: [customer_user_id], references: [id], onDelete: Cascade)
+  deliverer       User @relation("DelivererDeliveries", fields: [deliverer_user_id], references: [id], onDelete: Cascade)
+  receipt         Receipt?  @relation(fields: [receipt_id], references: [receipt_id], onDelete: SetNull)
+
+  @@index([deliverer_user_id])
+  @@index([customer_user_id])
+  @@index([receipt_id])
+}
+
+/// Timetable for deliveries.
+model DeliveryTimetable {
+  deliverer_user_id Int
+  day_of_work  String
+  deliverer    User @relation(fields: [deliverer_user_id], references: [id], onDelete: Cascade)
+
+  @@id([deliverer_user_id, day_of_work])
+  @@index([deliverer_user_id])
+}
+
+/// Stores image paths for inventory items.
+model Images {
+  image      String
+  product_id String
+  product    Inventory @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@id([product_id, image])
+  @@index([product_id])
+  @@map("images")
+}
