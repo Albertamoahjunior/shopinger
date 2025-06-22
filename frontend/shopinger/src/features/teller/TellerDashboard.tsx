@@ -10,7 +10,7 @@ import { createSale, type SaleResponse, type CreateSalePayload } from '../../ser
 import { useAppDispatch } from '../../app/hooks';
 import { showNotification } from '../notifications/notificationSlice';
 import { AxiosError } from 'axios';
-import { getTellers, deleteTeller, type Teller } from '../../services/tellerService';
+import { getTellers, deleteTeller, type TellerUser } from '../../services/tellerService';
 import { CreateTeller } from './CreateTeller';
 import { EditTeller } from './EditTeller';
 
@@ -18,23 +18,21 @@ interface SaleCartItem extends InventoryItem {
   saleQuantity: number;
 }
 
-// interface Props {}
-
 export function TellerDashboard() {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
   const [saleItems, setSaleItems] = useState<SaleCartItem[]>([]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [editTeller, setEditTeller] = useState<Teller | null>(null);
+  const [editTeller, setEditTeller] = useState<TellerUser | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [tellerToDelete, setTellerToDelete] = useState<Teller | null>(null);
+  const [tellerToDelete, setTellerToDelete] = useState<TellerUser | null>(null);
 
   const { data: inventory = [], isLoading: inventoryLoading, error: inventoryError } = useQuery<InventoryItem[], AxiosError | Error>({
     queryKey: ['inventory'],
     queryFn: getInventory,
   });
 
-  const { data: tellers = [], isLoading: tellersLoading, error: tellersError } = useQuery<Teller[], AxiosError | Error>({
+  const { data: tellers = [], isLoading: tellersLoading, error: tellersError } = useQuery<TellerUser[], AxiosError | Error>({
     queryKey: ['tellers'],
     queryFn: getTellers,
   });
@@ -80,12 +78,12 @@ export function TellerDashboard() {
     mutationFn: deleteTeller,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tellers'] });
-      dispatch(showNotification({ message: 'Teller deleted successfully!', type: 'success' }));
+      dispatch(showNotification({ message: 'Teller deactivated successfully!', type: 'success' }));
       setDeleteConfirmOpen(false);
       setTellerToDelete(null);
     },
     onError: (err: AxiosError) => {
-      const errorMessage = (err.response?.data as { message?: string })?.message || 'Failed to delete teller.';
+      const errorMessage = (err.response?.data as { message?: string })?.message || 'Failed to deactivate teller.';
       dispatch(showNotification({ message: errorMessage, type: 'error' }));
     },
   });
@@ -168,7 +166,7 @@ export function TellerDashboard() {
     createSaleMutation.mutate(payload);
   };
 
-  const handleTellerDeleteClick = (teller: Teller) => {
+  const handleTellerDeleteClick = (teller: TellerUser) => {
     setTellerToDelete(teller);
     setDeleteConfirmOpen(true);
   };
@@ -213,38 +211,43 @@ export function TellerDashboard() {
     getFilteredRowModel: getFilteredRowModel(),
   });
 
-  const tellerColumns: ColumnDef<Teller>[] = [
+  const tellerColumns: ColumnDef<TellerUser>[] = [
     {
-      accessorKey: 'first_name',
+      accessorFn: row => row.profile.first_name,
       header: 'First Name',
+      id: 'first_name'
     },
     {
-      accessorKey: 'last_name',
+      accessorFn: row => row.profile.last_name,
       header: 'Last Name',
+      id: 'last_name'
     },
     {
       accessorKey: 'email',
       header: 'Email',
     },
     {
-      accessorKey: 'tel_number',
+      accessorFn: row => row.profile.phone_number,
       header: 'Phone',
+      id: 'phone_number'
     },
     {
-      accessorKey: 'employee_id',
+      accessorFn: row => row.profile.id_number,
       header: 'Employee ID',
+      id: 'employee_id'
     },
     {
-      accessorKey: 'shift',
+      accessorFn: row => row.profile.profile_data?.shift,
       header: 'Shift',
+      id: 'shift'
     },
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }: { row: any }) => (
+      cell: ({ row }) => (
         <Box>
           <Button size="small" sx={{ mr: 1 }} onClick={() => setEditTeller(row.original)}>Edit</Button>
-          <Button size="small" color="error" onClick={() => handleTellerDeleteClick(row.original)}>Delete</Button>
+          <Button size="small" color="error" onClick={() => handleTellerDeleteClick(row.original)}>Deactivate</Button>
         </Box>
       ),
     },
@@ -419,10 +422,10 @@ export function TellerDashboard() {
       )}
 
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>Confirm Deactivation</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete teller "{tellerToDelete?.first_name} {tellerToDelete?.last_name}"?
+            Are you sure you want to deactivate teller "{tellerToDelete?.profile.first_name} {tellerToDelete?.profile.last_name}"?
             This action cannot be undone.
           </Typography>
         </DialogContent>

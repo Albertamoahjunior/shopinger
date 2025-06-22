@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, getFilteredRowModel, getPaginationRowModel } from '@tanstack/react-table';
 import type { ColumnDef, PaginationState } from '@tanstack/react-table';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSuppliers, deleteSupplier, type Supplier } from '../../services/supplierService';
+import { getSuppliers, deleteSupplier } from '../../services/supplierService';
+import type { CustomerUser } from '../../services/customerService'; // Using CustomerUser as Supplier is also a User
 import { Box, CircularProgress, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useAppDispatch } from '../../app/hooks';
 import { showNotification } from '../notifications/notificationSlice';
@@ -13,18 +14,21 @@ import { EditSupplier } from './EditSupplier';
 export function SupplierDashboard() {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
-  const [editSupplier, setEditSupplier] = useState<Supplier | null>(null);
+  const [editSupplier, setEditSupplier] = useState<CustomerUser | null>(null); // Using CustomerUser as Supplier is also a User
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<CustomerUser | null>(null); // Using CustomerUser as Supplier is also a User
   const [globalFilter, setGlobalFilter] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  const { data: suppliers = [], isLoading, error } = useQuery<Supplier[], AxiosError | Error>({
+  const { data: suppliers = [], isLoading, error } = useQuery<CustomerUser[], AxiosError | Error>({ // Using CustomerUser
     queryKey: ['suppliers'],
-    queryFn: getSuppliers,
+    queryFn: async (): Promise<CustomerUser[]> => {
+      const response = await getSuppliers();
+      return response;
+    },
   });
 
   useEffect(() => {
@@ -43,17 +47,17 @@ export function SupplierDashboard() {
     mutationFn: deleteSupplier,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-      dispatch(showNotification({ message: 'Supplier deleted successfully!', type: 'success' }));
+      dispatch(showNotification({ message: 'Supplier deactivated successfully!', type: 'success' })); // Changed message
       setDeleteConfirmOpen(false);
       setSupplierToDelete(null);
     },
     onError: (err: AxiosError) => {
-      const errorMessage = (err.response?.data as { message?: string })?.message || 'Failed to delete supplier.';
+      const errorMessage = (err.response?.data as { message?: string })?.message || 'Failed to deactivate supplier.'; // Changed message
       dispatch(showNotification({ message: errorMessage, type: 'error' }));
     },
   });
 
-  const handleDeleteClick = (supplier: Supplier) => {
+  const handleDeleteClick = (supplier: CustomerUser) => { // Using CustomerUser
     setSupplierToDelete(supplier);
     setDeleteConfirmOpen(true);
   };
@@ -64,30 +68,39 @@ export function SupplierDashboard() {
     }
   };
 
-  const columns: ColumnDef<Supplier>[] = [
+  const columns: ColumnDef<CustomerUser>[] = [ // Using CustomerUser
     {
-      accessorKey: 'first_name',
-      header: 'First Name',
+      accessorKey: 'id',
+      header: 'ID',
     },
     {
-      accessorKey: 'last_name',
+      accessorFn: row => row.profile.first_name, // Access from profile
+      header: 'First Name',
+      id: 'first_name'
+    },
+    {
+      accessorFn: row => row.profile.last_name, // Access from profile
       header: 'Last Name',
+      id: 'last_name'
     },
     {
       accessorKey: 'email',
       header: 'Email',
     },
     {
-      accessorKey: 'tel_number',
+      accessorFn: row => row.profile.phone_number, // Access from profile
       header: 'Phone',
+      id: 'phone_number'
     },
     {
-      accessorKey: 'company_name',
+      accessorFn: row => row.profile.profile_data?.company_name, // Access from profile_data
       header: 'Company',
+      id: 'company_name'
     },
     {
-      accessorKey: 'address',
+      accessorFn: row => row.profile.profile_data?.address, // Access from profile_data
       header: 'Address',
+      id: 'address'
     },
     {
       id: 'actions',
@@ -106,7 +119,7 @@ export function SupplierDashboard() {
             color="error" 
             onClick={() => handleDeleteClick(row.original)}
           >
-            Delete
+            Deactivate {/* Changed from Delete */}
           </Button>
         </Box>
       ),
@@ -129,7 +142,7 @@ export function SupplierDashboard() {
 
   if (isLoading) {
     return (
-      <Box className="flex justify-center items-center h-full min-h-[calc(100vh-64px)]">
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <CircularProgress />
       </Box>
     );
@@ -216,11 +229,11 @@ export function SupplierDashboard() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>Confirm Deactivation</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete supplier "{supplierToDelete?.first_name} {supplierToDelete?.last_name}"?
-            This action cannot be undone.
+            Are you sure you want to deactivate supplier "{supplierToDelete?.profile.first_name} {supplierToDelete?.profile.last_name}"?
+            This action will set the user as inactive.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -230,7 +243,7 @@ export function SupplierDashboard() {
             color="error" 
             disabled={deleteMutation.isPending}
           >
-            {deleteMutation.isPending ? <CircularProgress size={20} /> : 'Delete'}
+            {deleteMutation.isPending ? <CircularProgress size={20} /> : 'Deactivate'}
           </Button>
         </DialogActions>
       </Dialog>

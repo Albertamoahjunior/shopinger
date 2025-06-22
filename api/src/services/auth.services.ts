@@ -71,6 +71,11 @@ export const loginUser = async (email: string, password: string) => {
             return null;
         }
 
+        // If user has no password (e.g., OAuth user), and a password is provided, it's an invalid login attempt
+        if (!user.password) {
+            return null;
+        }
+
         const isValidPassword = compare_pass(password, user.password);
         
         if (!isValidPassword) {
@@ -144,7 +149,7 @@ export const verifyPassword = async (userId: number, password: string) => {
             select: { password: true }
         });
 
-        if (!user) {
+        if (!user || !user.password) { // Check if user or password is null
             return false;
         }
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import passport from "passport";
 import { generateToken } from "../../config/auth.config";
-import { registerUser, loginUser } from "../services/auth.services";
+import { registerUser, loginUser } from "../services/auth.services"; // Re-import loginUser
 import { userExists } from "../services/user.services";
 import { UserRole } from "@prisma/client";
 
@@ -14,28 +14,40 @@ const login = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Email and password are required" });
         }
 
-        const user = await loginUser(email, password);
-        
-        if (!user) {
-            return res.status(401).json({ message: "Invalid credentials" });
-        }
+        // Use Passport.js local strategy for login
+        passport.authenticate('local', (err: any, user: any, info: any) => {
+            if (err) {
+                console.error("Passport authentication error:", err);
+                return res.status(500).json({ message: "Internal Server Error" });
+            }
+            if (!user) {
+                return res.status(401).json({ message: info.message || "Invalid credentials" });
+            }
 
-        const payload = {
-            userId: user.id,
-            role: user.profile?.role,
-            email: user.email
-        };
+            req.logIn(user, (err) => {
+                if (err) {
+                    console.error("Login error:", err);
+                    return res.status(500).json({ message: "Internal Server Error" });
+                }
 
-        const token = generateToken(payload, '1h');
-        
-        // Remove password from response
-        const { password: _, ...userWithoutPassword } = user;
-        
-        res.status(200).json({ 
-            token, 
-            user: userWithoutPassword,
-            message: "Login successful"
-        });
+                const payload = {
+                    userId: user.id,
+                    role: user.profile?.role,
+                    email: user.email
+                };
+
+                const token = generateToken(payload, '1h');
+                
+                // Remove password from response
+                const { password: _, ...userWithoutPassword } = user;
+                
+                res.status(200).json({ 
+                    token, 
+                    user: userWithoutPassword,
+                    message: "Login successful"
+                });
+            });
+        })(req, res); // Call the authenticate middleware
     } catch (error: any) {
         console.error("Error logging in:", error);
         return res.status(500).json({ message: "Internal Server Error" });
@@ -158,23 +170,7 @@ const sign_up_customer = async (req: Request, res: Response) => {
     }
 };
 
-// Passport-based login (for existing passport strategies)
-const passport_login = (req: Request, res: Response) => {
-    console.log("Passport login");
-    if (!req.user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-    }
 
-    const user = req.user as any;
-    const payload = {
-        userId: user.id,
-        role: user.profile?.role,
-        email: user.email
-    };
-
-    const token = generateToken(payload, '1h');
-    res.status(200).json({ token, user: req.user });
-};
 
 const log_out = (req: Request, res: Response) => {
     req.logout((err: any) => {
@@ -189,7 +185,7 @@ const log_out = (req: Request, res: Response) => {
 export default {
     login,
     register,
-    sign_up_customer, // Keep for backward compatibility
-    passport_login,
+    sign_up_customer,
+
     log_out,
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createCustomer, type Customer } from '../../services/customerService';
+import { createCustomer } from '../../services/customerService';
 import { Box, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
 import { useAppDispatch } from '../../app/hooks';
 import { showNotification } from '../notifications/notificationSlice';
@@ -13,10 +13,19 @@ export function CreateCustomer() {
   const [first_name, setFirstName] = useState('');
   const [last_name, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [tel_number, setTelNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone_number, setPhoneNumber] = useState('');
 
   const createMutation = useMutation({
-    mutationFn: createCustomer,
+    mutationFn: async () => {
+      return createCustomer({
+        first_name,
+        last_name,
+        email,
+        password,
+        phone_number,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       dispatch(showNotification({ message: 'Customer created successfully!', type: 'success' }));
@@ -34,18 +43,13 @@ export function CreateCustomer() {
     setFirstName('');
     setLastName('');
     setEmail('');
-    setTelNumber('');
+    setPassword('');
+    setPhoneNumber('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newCustomer: Omit<Customer, 'id'> = {
-      first_name,
-      last_name,
-      email,
-      tel_number,
-    };
-    createMutation.mutate(newCustomer);
+    createMutation.mutate();
   };
 
   return (
@@ -83,12 +87,20 @@ export function CreateCustomer() {
               required
               sx={{ mb: 2 }}
             />
-            <TextField
-              label="Phone Number"
-              value={tel_number}
-              onChange={(e) => setTelNumber(e.target.value)}
+             <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               fullWidth
               required
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="Phone Number"
+              value={phone_number}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              fullWidth
               sx={{ mb: 2 }}
             />
           </Box>
@@ -98,7 +110,7 @@ export function CreateCustomer() {
           <Button 
             onClick={handleSubmit} 
             variant="contained"
-            disabled={createMutation.isPending || !first_name || !last_name || !email || !tel_number}
+            disabled={createMutation.isPending || !first_name || !last_name || !email || !password}
           >
             {createMutation.isPending ? <CircularProgress size={20} /> : 'Create Customer'}
           </Button>

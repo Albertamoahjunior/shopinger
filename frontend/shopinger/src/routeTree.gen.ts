@@ -11,17 +11,39 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as TellerImport } from './routes/teller'
 import { Route as SearchImport } from './routes/search'
+import { Route as DelivererImport } from './routes/deliverer'
+import { Route as CustomerImport } from './routes/customer'
 import { Route as CartImport } from './routes/cart'
 import { Route as AuthImport } from './routes/auth'
+import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
 import { Route as ProductsProductIdImport } from './routes/products.$productId'
 
 // Create/Update Routes
 
+const TellerRoute = TellerImport.update({
+  id: '/teller',
+  path: '/teller',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const SearchRoute = SearchImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const DelivererRoute = DelivererImport.update({
+  id: '/deliverer',
+  path: '/deliverer',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const CustomerRoute = CustomerImport.update({
+  id: '/customer',
+  path: '/customer',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -34,6 +56,12 @@ const CartRoute = CartImport.update({
 const AuthRoute = AuthImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AdminRoute = AdminImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -60,6 +88,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminImport
+      parentRoute: typeof rootRoute
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -74,11 +109,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CartImport
       parentRoute: typeof rootRoute
     }
+    '/customer': {
+      id: '/customer'
+      path: '/customer'
+      fullPath: '/customer'
+      preLoaderRoute: typeof CustomerImport
+      parentRoute: typeof rootRoute
+    }
+    '/deliverer': {
+      id: '/deliverer'
+      path: '/deliverer'
+      fullPath: '/deliverer'
+      preLoaderRoute: typeof DelivererImport
+      parentRoute: typeof rootRoute
+    }
     '/search': {
       id: '/search'
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchImport
+      parentRoute: typeof rootRoute
+    }
+    '/teller': {
+      id: '/teller'
+      path: '/teller'
+      fullPath: '/teller'
+      preLoaderRoute: typeof TellerImport
       parentRoute: typeof rootRoute
     }
     '/products/$productId': {
@@ -95,51 +151,99 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
+  '/customer': typeof CustomerRoute
+  '/deliverer': typeof DelivererRoute
   '/search': typeof SearchRoute
+  '/teller': typeof TellerRoute
   '/products/$productId': typeof ProductsProductIdRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
+  '/customer': typeof CustomerRoute
+  '/deliverer': typeof DelivererRoute
   '/search': typeof SearchRoute
+  '/teller': typeof TellerRoute
   '/products/$productId': typeof ProductsProductIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
+  '/customer': typeof CustomerRoute
+  '/deliverer': typeof DelivererRoute
   '/search': typeof SearchRoute
+  '/teller': typeof TellerRoute
   '/products/$productId': typeof ProductsProductIdRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/cart' | '/search' | '/products/$productId'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/cart'
+    | '/customer'
+    | '/deliverer'
+    | '/search'
+    | '/teller'
+    | '/products/$productId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/cart' | '/search' | '/products/$productId'
-  id: '__root__' | '/' | '/auth' | '/cart' | '/search' | '/products/$productId'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/cart'
+    | '/customer'
+    | '/deliverer'
+    | '/search'
+    | '/teller'
+    | '/products/$productId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/cart'
+    | '/customer'
+    | '/deliverer'
+    | '/search'
+    | '/teller'
+    | '/products/$productId'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
+  CustomerRoute: typeof CustomerRoute
+  DelivererRoute: typeof DelivererRoute
   SearchRoute: typeof SearchRoute
+  TellerRoute: typeof TellerRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CartRoute: CartRoute,
+  CustomerRoute: CustomerRoute,
+  DelivererRoute: DelivererRoute,
   SearchRoute: SearchRoute,
+  TellerRoute: TellerRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
 }
 
@@ -154,14 +258,21 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/admin",
         "/auth",
         "/cart",
+        "/customer",
+        "/deliverer",
         "/search",
+        "/teller",
         "/products/$productId"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/admin": {
+      "filePath": "admin.tsx"
     },
     "/auth": {
       "filePath": "auth.tsx"
@@ -169,8 +280,17 @@ export const routeTree = rootRoute
     "/cart": {
       "filePath": "cart.tsx"
     },
+    "/customer": {
+      "filePath": "customer.tsx"
+    },
+    "/deliverer": {
+      "filePath": "deliverer.tsx"
+    },
     "/search": {
       "filePath": "search.tsx"
+    },
+    "/teller": {
+      "filePath": "teller.tsx"
     },
     "/products/$productId": {
       "filePath": "products.$productId.tsx"

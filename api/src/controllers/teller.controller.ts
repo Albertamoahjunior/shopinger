@@ -1,12 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { Request, Response } from 'express';
 const prisma = new PrismaClient();
 
 const get_tellers = async (req: Request, res: Response) => {
     try {
-        const tellers = await prisma.workers.findMany({
+        const tellers = await prisma.user.findMany({
             where: {
-                role: "teller"
+                profile: {
+                    role: UserRole.TELLER
+                }
+            },
+            include: {
+                profile: true
             }
         });
         res.status(200).json(tellers);
@@ -19,10 +24,15 @@ const get_tellers = async (req: Request, res: Response) => {
 const get_teller_by_id = async (req: Request, res: Response) => {
     try {
         const { teller_id } = req.params;
-        const teller = await prisma.workers.findUnique({
+        const teller = await prisma.user.findUnique({
             where: {
                 id: parseInt(teller_id),
-                role: "teller"
+                profile: {
+                    role: UserRole.TELLER
+                }
+            },
+            include: {
+                profile: true
             },
         });
         if (!teller) {
@@ -37,20 +47,28 @@ const get_teller_by_id = async (req: Request, res: Response) => {
 
 const add_teller = async (req: Request, res: Response) => {
     try {
-        const { first_name, last_name, tel_number, email, password, dob, id_number } = req.body;
-        const teller = await prisma.workers.create({
+        const { first_name, last_name, email, password, phone_number, date_of_birth, id_number } = req.body;
+
+        const newUser = await prisma.user.create({
             data: {
-                first_name,
-                last_name,
-                tel_number,
                 email,
                 password,
-                dob,
-                id_number,
-                role: "teller"
+                profile: {
+                    create: {
+                        first_name,
+                        last_name,
+                        phone_number,
+                        date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
+                        id_number,
+                        role: UserRole.TELLER,
+                    }
+                }
             },
+            include: {
+                profile: true
+            }
         });
-        res.status(201).json(teller);
+        res.status(201).json(newUser);
     } catch (error: any) {
         console.error("Error adding teller:", error);
         res.status(500).send("Internal Server Error");
@@ -60,13 +78,19 @@ const add_teller = async (req: Request, res: Response) => {
 const remove_teller = async (req: Request, res: Response) => {
     try {
         const { teller_id } = req.params;
-        await prisma.workers.delete({
+        // Deactivate the user instead of deleting
+        await prisma.user.update({
             where: {
                 id: parseInt(teller_id),
-                role: "teller"
+                profile: {
+                    role: UserRole.TELLER
+                }
+            },
+            data: {
+                is_active: false
             },
         });
-        res.status(204).send("Teller deleted");
+        res.status(204).send("Teller deactivated");
     } catch (error: any) {
         console.error("Error removing teller:", error);
         res.status(500).send("Internal Server Error");
@@ -75,25 +99,35 @@ const remove_teller = async (req: Request, res: Response) => {
 
 const update_teller = async (req: Request, res: Response) => {
     try {
-        const { first_name, last_name, tel_number, email, password, dob, id_number } = req.body;
-        const { teller_id: id } = req.params;
-        const teller = await prisma.workers.update({
-            where: {
-                id: parseInt(id),
-                role: "teller"
-            },
-            data: {
-                first_name,
-                last_name,
-                tel_number,
-                email,
-                password,
-                dob,
-                id_number,
-                role: "teller"
-            },
+        const { teller_id } = req.params;
+        const { first_name, last_name, email, phone_number, date_of_birth, id_number } = req.body;
+
+        const existingUser = await prisma.user.findUnique({
+            where: { id: parseInt(teller_id) },
+            include: { profile: true }
         });
-        res.status(200).json(teller);
+
+        if (!existingUser || existingUser.profile?.role !== UserRole.TELLER) {
+            return res.status(404).send("Teller not found");
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: parseInt(teller_id) },
+            data: {
+                email: email || existingUser.email,
+                profile: {
+                    update: {
+                        first_name: first_name || existingUser.profile?.first_name,
+                        last_name: last_name || existingUser.profile?.last_name,
+                        phone_number: phone_number || existingUser.profile?.phone_number,
+                        date_of_birth: date_of_birth ? new Date(date_of_birth) : existingUser.profile?.date_of_birth,
+                        id_number: id_number || existingUser.profile?.id_number,
+                    }
+                }
+            },
+            include: { profile: true }
+        });
+        res.status(200).json(updatedUser);
     } catch (error: any) {
         console.error("Error updating teller:", error);
         res.status(500).send("Internal Server Error");

@@ -14,8 +14,6 @@ router.post("/register", authController.register as express.RequestHandler);
 router.post("/signup", authController.sign_up_customer as express.RequestHandler);
 router.post("/signup/customer", authController.sign_up_customer as express.RequestHandler);
 
-// Passport Local Strategy login
-router.post("/local", passport.authenticate('local'), authController.passport_login as express.RequestHandler);
 
 // Google OAuth routes
 router.get("/google", passport.authenticate('google', { scope: ['profile', 'email'] }));

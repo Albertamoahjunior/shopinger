@@ -9,8 +9,9 @@ import { useState } from 'react'; // Import useState
 
 export function Header() {
   const cartItems = useAppSelector(selectCartItems);
-  const totalItems = cartItems.reduce((total, item) => total + item.cartQuantity, 0);
-  const { role } = useAppSelector(selectCurrentUser);
+  const totalItems = cartItems.reduce((total, item) => total + item.qty, 0);
+  const user = useAppSelector(selectCurrentUser);
+  const role = user?.profile?.role;
   const navigate = useNavigate(); // Initialize useNavigate
   const [searchQuery, setSearchQuery] = useState(''); // State for search input
 

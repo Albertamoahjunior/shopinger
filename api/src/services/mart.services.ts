@@ -5,7 +5,7 @@ export const getCart = async (customerId: number) => {
     try {
         const cart = await prisma.mart.findMany({
             where: {
-                customer_id: customerId,
+                customer_user_id: customerId,
             },
             include: {
                 product: true,
@@ -22,7 +22,7 @@ export const addItemToCart = async (customerId: number, productId: string, qty: 
     try {
         const cartItem = await prisma.mart.create({
             data: {
-                customer_id: customerId,
+                customer_user_id: customerId,
                 product_id: productId,
                 qty: qty,
                 type: 'cart',
@@ -39,8 +39,8 @@ export const updateCartItemQty = async (customerId: number, productId: string, q
     try {
         const cartItem = await prisma.mart.update({
             where: {
-                customer_id_product_id_type: {
-                    customer_id: customerId,
+                customer_user_id_product_id_type: {
+                    customer_user_id: customerId,
                     product_id: productId,
                     type: 'cart',
                 },
@@ -60,8 +60,8 @@ export const removeItemFromCart = async (customerId: number, productId: string) 
     try {
         const cartItem = await prisma.mart.delete({
             where: {
-                customer_id_product_id_type: {
-                    customer_id: customerId,
+                customer_user_id_product_id_type: {
+                    customer_user_id: customerId,
                     product_id: productId,
                     type: 'cart',
                 },

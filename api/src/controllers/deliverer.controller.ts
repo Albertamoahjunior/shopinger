@@ -1,12 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { Request, Response } from 'express';
 const prisma = new PrismaClient();
 
 const get_deliverers = async (req: Request, res: Response) => {
     try {
-        const deliverers = await prisma.workers.findMany({
+        const deliverers = await prisma.user.findMany({
             where: {
-                role: "deliverer"
+                profile: {
+                    role: UserRole.DELIVERER
+                }
+            },
+            include: {
+                profile: true
             }
         });
         res.status(200).json(deliverers);
@@ -19,10 +24,15 @@ const get_deliverers = async (req: Request, res: Response) => {
 const get_deliverer_by_id = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const deliverer = await prisma.workers.findUnique({
+        const deliverer = await prisma.user.findUnique({
             where: {
                 id: parseInt(id),
-                role: "deliverer"
+                profile: {
+                    role: UserRole.DELIVERER
+                }
+            },
+            include: {
+                profile: true
             },
         });
         if (!deliverer) {
@@ -37,20 +47,33 @@ const get_deliverer_by_id = async (req: Request, res: Response) => {
 
 const add_deliverer = async (req: Request, res: Response) => {
      try {
-        const { first_name, last_name, tel_number, email, password, dob, id_number } = req.body;
-        const deliverer = await prisma.workers.create({
+        const { first_name, last_name, email, password, phone_number, date_of_birth, id_number, vehicle_type, license_number, status } = req.body;
+
+        const newUser = await prisma.user.create({
             data: {
-                first_name,
-                last_name,
-                tel_number,
                 email,
                 password,
-                dob,
-                id_number,
-                role: "deliverer"
+                profile: {
+                    create: {
+                        first_name,
+                        last_name,
+                        phone_number,
+                        date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
+                        id_number,
+                        role: UserRole.DELIVERER,
+                        profile_data: {
+                            vehicle_type,
+                            license_number,
+                            status
+                        }
+                    }
+                }
             },
+            include: {
+                profile: true
+            }
         });
-        res.status(201).json(deliverer);
+        res.status(201).json(newUser);
     } catch (error: any) {
         console.error("Error adding deliverer:", error);
         res.status(500).send("Internal Server Error");
@@ -60,13 +83,19 @@ const add_deliverer = async (req: Request, res: Response) => {
 const remove_deliverer = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await prisma.workers.delete({
+        // Deactivate the user instead of deleting
+        await prisma.user.update({
             where: {
                 id: parseInt(id),
-                role: "deliverer"
+                profile: {
+                    role: UserRole.DELIVERER
+                }
+            },
+            data: {
+                is_active: false
             },
         });
-        res.status(204).send("Deliverer deleted");
+        res.status(204).send("Deliverer deactivated");
     } catch (error: any) {
         console.error("Error removing deliverer:", error);
         res.status(500).send("Internal Server Error");
@@ -76,24 +105,40 @@ const remove_deliverer = async (req: Request, res: Response) => {
 const update_deliverer = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { first_name, last_name, tel_number, email, password, dob, id_number } = req.body;
-        const deliverer = await prisma.workers.update({
-            where: {
-                id: parseInt(id),
-                role: "deliverer"
-            },
-            data: {
-                first_name,
-                last_name,
-                tel_number,
-                email,
-                password,
-                dob,
-                id_number,
-                role: "deliverer"
-            },
+        const { first_name, last_name, email, phone_number, date_of_birth, id_number, vehicle_type, license_number, status } = req.body;
+
+        const existingUser = await prisma.user.findUnique({
+            where: { id: parseInt(id) },
+            include: { profile: true }
         });
-        res.status(200).json(deliverer);
+
+        if (!existingUser || existingUser.profile?.role !== UserRole.DELIVERER) {
+            return res.status(404).send("Deliverer not found");
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: {
+                email: email || existingUser.email,
+                profile: {
+                    update: {
+                        first_name: first_name || existingUser.profile?.first_name,
+                        last_name: last_name || existingUser.profile?.last_name,
+                        phone_number: phone_number || existingUser.profile?.phone_number,
+                        date_of_birth: date_of_birth ? new Date(date_of_birth) : existingUser.profile?.date_of_birth,
+                        id_number: id_number || existingUser.profile?.id_number,
+                        profile_data: {
+                            ...(existingUser.profile?.profile_data as object || {}),
+                            vehicle_type: vehicle_type || (existingUser.profile?.profile_data as any)?.vehicle_type,
+                            license_number: license_number || (existingUser.profile?.profile_data as any)?.license_number,
+                            status: status || (existingUser.profile?.profile_data as any)?.status,
+                        }
+                    }
+                }
+            },
+            include: { profile: true }
+        });
+        res.status(200).json(updatedUser);
     } catch (error: any) {
         console.error("Error updating deliverer:", error);
         res.status(500).send("Internal Server Error");

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
 import { googleLogin } from '../../services/authService';
+import { getRedirectRoute } from '../../utils/roleBasedRedirect';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address').min(1, 'Email is required'),
@@ -30,8 +31,10 @@ export function Login() {
 
   const onSubmit = async (data: LoginFormInputs) => {
     try {
-      await dispatch(loginAsync(data)).unwrap();
-      navigate({ to: '/' });
+      const response = await dispatch(loginAsync(data)).unwrap();
+      const role = response.user.profile?.role;
+      const redirectRoute = role ? getRedirectRoute(role) : '/';
+      navigate({ to: redirectRoute });
     } catch (error: unknown) {
       let errorMessage = 'Login failed. Please check your credentials.';
       if (axios.isAxiosError(error)) {

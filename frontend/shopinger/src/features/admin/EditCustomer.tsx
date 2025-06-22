@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateCustomer, type Customer } from '../../services/customerService';
+import { updateCustomer, type CustomerUser } from '../../services/customerService';
 import { Box, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
 import { useAppDispatch } from '../../app/hooks';
 import { showNotification } from '../notifications/notificationSlice';
 import { AxiosError } from 'axios';
 
 interface EditCustomerProps {
-  customer: Customer;
+  customer: CustomerUser;
   open: boolean;
   onClose: () => void;
 }
@@ -15,23 +15,28 @@ interface EditCustomerProps {
 export function EditCustomer({ customer, open, onClose }: EditCustomerProps) {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
-  const [first_name, setFirstName] = useState('');
-  const [last_name, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [tel_number, setTelNumber] = useState('');
+  const [first_name, setFirstName] = useState(customer.profile?.first_name || '');
+  const [last_name, setLastName] = useState(customer.profile?.last_name || '');
+  const [email, setEmail] = useState(customer.email || '');
+  const [phone_number, setPhoneNumber] = useState(customer.profile?.phone_number || '');
 
   // Populate form when customer changes
   useEffect(() => {
     if (customer) {
-      setFirstName(customer.first_name || '');
-      setLastName(customer.last_name || '');
+      setFirstName(customer.profile?.first_name || '');
+      setLastName(customer.profile?.last_name || '');
       setEmail(customer.email || '');
-      setTelNumber(customer.tel_number || '');
+      setPhoneNumber(customer.profile?.phone_number || '');
     }
   }, [customer]);
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Customer> }) => updateCustomer(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Partial<{
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone_number: string;
+    }> }) => updateCustomer(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       dispatch(showNotification({ message: 'Customer updated successfully!', type: 'success' }));
@@ -45,11 +50,11 @@ export function EditCustomer({ customer, open, onClose }: EditCustomerProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedCustomer: Partial<Customer> = {
+    const updatedCustomer = {
       first_name,
       last_name,
       email,
-      tel_number,
+      phone_number,
     };
     updateMutation.mutate({ id: customer.id, data: updatedCustomer });
   };
@@ -86,10 +91,9 @@ export function EditCustomer({ customer, open, onClose }: EditCustomerProps) {
           />
           <TextField
             label="Phone Number"
-            value={tel_number}
-            onChange={(e) => setTelNumber(e.target.value)}
+            value={phone_number}
+            onChange={(e) => setPhoneNumber(e.target.value)}
             fullWidth
-            required
             sx={{ mb: 2 }}
           />
         </Box>
@@ -99,7 +103,7 @@ export function EditCustomer({ customer, open, onClose }: EditCustomerProps) {
         <Button 
           onClick={handleSubmit} 
           variant="contained"
-          disabled={updateMutation.isPending || !first_name || !last_name || !email || !tel_number}
+          disabled={updateMutation.isPending || !first_name || !last_name || !email}
         >
           {updateMutation.isPending ? <CircularProgress size={20} /> : 'Update Customer'}
         </Button>

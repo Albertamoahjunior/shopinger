@@ -22,7 +22,7 @@ import { SupplierDashboard } from './SupplierDashboard';
 import { CustomerDashboard } from './CustomerDashboard';
 import { ReceiptDashboard } from './ReceiptDashboard';
 
-export function AdminDashboard() {
+export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);

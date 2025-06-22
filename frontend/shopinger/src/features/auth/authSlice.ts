@@ -4,13 +4,15 @@ import { login, register } from '../../services/authService';
 import type { AuthResponse, User } from '../../services/authService';
 
 interface AuthState {
+  token: string | null;
   user: User | null;
   isLoading: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
-  user: null,
+  token: localStorage.getItem('token'),
+  user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') as string) : null,
   isLoading: false,
   error: null,
 };
@@ -19,7 +21,9 @@ export const loginAsync = createAsyncThunk(
   'auth/login',
   async (credentials: { email?: string; password?: string }) => {
     const response: AuthResponse = await login(credentials);
-    return response.user; // Return only the user object
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
+    return response;
   }
 );
 
@@ -34,7 +38,9 @@ export const registerAsync = createAsyncThunk(
     role?: string 
   }) => {
     const response: AuthResponse = await register(credentials);
-    return response.user; // Return only the user object
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
+    return response;
   }
 );
 
@@ -43,7 +49,9 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
+      state.token = null;
       state.user = null;
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
     },
   },
@@ -55,8 +63,8 @@ const authSlice = createSlice({
       })
       .addCase(loginAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
-        localStorage.setItem('user', JSON.stringify(action.payload));
+        state.token = action.payload.token;
+        state.user = action.payload.user;
       })
       .addCase(loginAsync.rejected, (state, action) => {
         state.isLoading = false;
@@ -68,14 +76,14 @@ const authSlice = createSlice({
       })
       .addCase(registerAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
-        localStorage.setItem('user', JSON.stringify(action.payload));
+        state.token = action.payload.token;
+        state.user = action.payload.user;
       })
       .addCase(registerAsync.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || 'Registration failed';
-      });
-  },
+      })
+  }
 });
 
 export const { logout } = authSlice.actions;

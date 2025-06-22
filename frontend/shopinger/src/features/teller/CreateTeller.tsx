@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createTeller, type Teller } from '../../services/tellerService';
+import { createTeller } from '../../services/tellerService';
 import { Box, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
 import { useAppDispatch } from '../../app/hooks';
 import { showNotification } from '../notifications/notificationSlice';
@@ -13,12 +13,25 @@ export function CreateTeller() {
   const [first_name, setFirstName] = useState('');
   const [last_name, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [tel_number, setTelNumber] = useState('');
-  const [employee_id, setEmployeeId] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone_number, setPhoneNumber] = useState('');
+  const [hire_date, setHireDate] = useState('');
+  const [id_number, setIdNumber] = useState('');
   const [shift, setShift] = useState('');
 
   const createMutation = useMutation({
-    mutationFn: createTeller,
+    mutationFn: async () => {
+      return createTeller({
+        first_name,
+        last_name,
+        email,
+        password,
+        phone_number,
+        hire_date,
+        id_number,
+        shift,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tellers'] });
       dispatch(showNotification({ message: 'Teller created successfully!', type: 'success' }));
@@ -36,22 +49,16 @@ export function CreateTeller() {
     setFirstName('');
     setLastName('');
     setEmail('');
-    setTelNumber('');
-    setEmployeeId('');
+    setPassword('');
+    setPhoneNumber('');
+    setHireDate('');
+    setIdNumber('');
     setShift('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newTeller: Omit<Teller, 'id'> = {
-      first_name,
-      last_name,
-      email,
-      tel_number,
-      employee_id,
-      shift,
-    };
-    createMutation.mutate(newTeller);
+    createMutation.mutate();
   };
 
   return (
@@ -90,17 +97,32 @@ export function CreateTeller() {
               sx={{ mb: 2 }}
             />
             <TextField
-              label="Phone Number"
-              value={tel_number}
-              onChange={(e) => setTelNumber(e.target.value)}
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               fullWidth
               required
               sx={{ mb: 2 }}
             />
-             <TextField
+            <TextField
+              label="Phone Number"
+              value={phone_number}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              fullWidth
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="Hire Date"
+              value={hire_date}
+              onChange={(e) => setHireDate(e.target.value)}
+              fullWidth
+              sx={{ mb: 2 }}
+            />
+            <TextField
               label="Employee ID"
-              value={employee_id}
-              onChange={(e) => setEmployeeId(e.target.value)}
+              value={id_number}
+              onChange={(e) => setIdNumber(e.target.value)}
               fullWidth
               sx={{ mb: 2 }}
             />
@@ -118,7 +140,7 @@ export function CreateTeller() {
           <Button 
             onClick={handleSubmit} 
             variant="contained"
-            disabled={createMutation.isPending || !first_name || !last_name || !email || !tel_number}
+            disabled={createMutation.isPending || !first_name || !last_name || !email || !password}
           >
             {createMutation.isPending ? <CircularProgress size={20} /> : 'Create Teller'}
           </Button>
